@@ -1,2 +1,10 @@
+git.cyberia.club/cyberia/promql-parser v1.10.12-0.20230121214209-d92f8583d958 h1:/JcWILiQUVznyBFfjYFqYgVPfSlyF/XzWvOAw2QleUQ=
+git.cyberia.club/cyberia/promql-parser v1.10.12-0.20230121214209-d92f8583d958/go.mod h1:dNhEEr5mKRZJgkv17zUHQXBqI4KRUFu8R/rbh0DpP3c=
+git.cyberia.club/cyberia/promql-parser v1.10.12-0.20230122232211-c74dc343ecb8 h1:ycBOsFf9b2V5wUchXkp+r5EZC3QxWifxgoTUTZgh3bc=
+git.cyberia.club/cyberia/promql-parser v1.10.12-0.20230122232211-c74dc343ecb8/go.mod h1:dNhEEr5mKRZJgkv17zUHQXBqI4KRUFu8R/rbh0DpP3c=
+github.com/cespare/xxhash/v2 v2.1.1 h1:6MnRN8NT7+YBpUIWxHtefFZOKTAPgGjpQSxqLNn0+qY=
+github.com/cespare/xxhash/v2 v2.1.1/go.mod h1:VGX0DQ3Q6kWi7AoAeZDth3/j3BFtOZR5XLFGgcrjCOs=
 github.com/matrix-org/gomatrix v0.0.0-20210324163249-be2af5ef2e16 h1:ZtO5uywdd5dLDCud4r0r55eP4j9FuUNpl60Gmntcop4=
 github.com/matrix-org/gomatrix v0.0.0-20210324163249-be2af5ef2e16/go.mod h1:/gBX06Kw0exX1HrwmoBibFA98yBk/jxKpGVeyQbff+s=
+github.com/pkg/errors v0.9.1 h1:FEBLx1zS214owpjy7qsBeixbURkuhQAwrK5UwLGTwt4=
+github.com/pkg/errors v0.9.1/go.mod h1:bwawxfHBFNV+L2hUp1rHADufV3IMtnDRdf1r5NINEl0=
