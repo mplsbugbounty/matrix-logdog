@@ -160,7 +160,7 @@ func search( terms []string , byteOffsetForRead int64, event string, sizeChan ch
                     found , _ := regexp.MatchString(term, line)
                     if found {
                         if !isMemberOfSet(barkedSet, line) {
-                            barkedSet[line] = struct{}
+                            barkedSet[line] = struct{}{}
                             log.Println("barking: ", line )
                             bark(line)
                         }
