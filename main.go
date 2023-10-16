@@ -83,7 +83,9 @@ func parseTermsFile ( filepathIn string ) ( fileLines []string ) {
     fileScanner.Split(bufio.ScanLines)
   
     for fileScanner.Scan() {
-        fileLines = append(fileLines, fileScanner.Text())
+        if fileScanner.Text() != "" {
+            fileLines = append(fileLines, fileScanner.Text())
+        }
     }
     return
 }
