@@ -14,6 +14,7 @@ import (
 
 )
 
+type StringSet map[string]struct{}
 // globalz lol
 var (
 	matrixUrl   string
@@ -24,8 +25,11 @@ var (
     watchDir string
     matchTermsFile string
 
+    barkedSet StringSet
+
 	cli *mautrix.Client
 )
+
 
 //possibly could further abstract these
 //but why?
@@ -45,6 +49,15 @@ func panicCheck(e error){
     if e != nil{
         log.Panicln(e)
     }
+}
+
+func isMemberOfSet( set StringSet, strIn string ) bool {
+    for item,_ := range set{
+        if strIn == item {
+            return true
+        }
+    }
+    return false
 }
 
 func parseEnv() {
@@ -146,8 +159,11 @@ func search( terms []string , byteOffsetForRead int64, event string, sizeChan ch
                 for _, term := range terms {
                     found , _ := regexp.MatchString(term, line)
                     if found {
-                        log.Println("barking: ", line )
-                        bark(line)
+                        if !isMemberOfSet(barkedSet, line) {
+                            barkedSet[line] = struct{}
+                            log.Println("barking: ", line )
+                            bark(line)
+                        }
                     }
                 }
             }
