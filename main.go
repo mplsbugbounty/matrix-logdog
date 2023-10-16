@@ -138,8 +138,14 @@ func watch( watchDir string, eventChan chan<- string) {
 func search( terms []string , byteOffsetForRead int64, event string, sizeChan chan<- int64 ) {
         file, err := os.Open( event )
         printCheck(err)
+        if err != nil{
+            return
+        }
         defer file.Close()
         fileinfo, err := file.Stat()
+        if err != nil{
+            return
+        }
         printCheck(err)
         fileSize := fileinfo.Size()
         sizeChan <-fileSize
