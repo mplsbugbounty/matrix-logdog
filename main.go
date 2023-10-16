@@ -178,6 +178,7 @@ func main() {
     log.Println("terms: ", terms)
 	cli, err = mautrix.NewClient(matrixUrl, matrixUser, matrixToken)
     panicCheck(err)
+    barkedSet = StringSet{}
     
     eventChan :=  make(chan string)
     sizeChan :=  make(chan int64)
