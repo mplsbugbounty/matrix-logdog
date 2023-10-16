@@ -1,34 +1,27 @@
-# 🐶 jackal
+Based on https://git.cyberia.club/cyberia/jackal
 
-![cute baby jackal stares at you with ears perked up](readme/jaackal.jpg)
+Watch a directory for filtered changes, receive notifications in Matrix!
+Any time a file is written within the selected directory, the new file data is checked against a provided list
+of terms. If a match is found, the matched line will be sent as a message to thee provided matrix room. 
 
-a humble doggy roboto
-
-## what is jackal?
-
-jackal is a watchdog - it polls for [prometheus alerts](https://prometheus.io/docs/prometheus/latest/querying/api/#rules) & barks in a matrix channel
-to alert people of alerts that are firing. Then it humbly waits 24hours in order to help prevent alert fatigue 😌
-
-jackal can automatically modify the promql query that drives the alert into a link to a prometheus graph which cleanly shows the metric which triggered the alert:
-
-![a screenshot of jackal posting an alert in a matrix channel.  HostHighCpuLoad for paimon.cyberia.club with a very long URL link to prometheus' /graph frontend](readme/post.png)
-
-
-![a screenshot of a prometheus graph showing CPU usage spiking up and down during alert testing](readme/prom.jpg)
+Matrix encryption is not yet supported.
 
 ## usage
 
-first, set up proper variables for jackal:
+first, set up proper variables for MATRIX_LOGDOG:
 
 ```
 # use whatever user you want! can even be from different homeserver
 # token can be found in element at settings -> help -> advanced -> token
 # room IDs can be found under settings -> advanced -> internal room id
-export JACKAL_MATRIX_URL="https://matrix.example.com"
-export JACKAL_MATRIX_USER="@yourbot:example.com"
-export JACKAL_MATRIX_TOKEN="yourbots-token"
-export JACKAL_MATRIX_ROOM="!WAoLCYOOyceAxMaFYU:example.com"
-export JACKAL_PROMETHEUS_URL="https://prometheus.example.com"
+export MATRIX_LOGDOG_URL="https://matrix.example.com"
+export MATRIX_LOGDOG_USER="@yourbot:example.com"
+export MATRIX_LOGDOG_TOKEN="yourbots-token"
+export MATRIX_LOGDOG_ROOM="!WAoLCYOOyceAxMaFYU:example.com"
+#this next one is the directory in which files are monitored for changes
+export MATRIX_LOGDOG_WATCH_DIR="/home/exampleuser/logz/"
+#this file is expected to be a newline-delimited set of strings to search for
+export MATRIX_LOGDOG_MATCH_FILE="/home/exampleuser/logrulez.txt"
 ```
 
 then, start the bot:
