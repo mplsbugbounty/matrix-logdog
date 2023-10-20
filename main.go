@@ -1,32 +1,41 @@
 package main
 
 import (
+    "context"
+    "sync"
+    "errors"
 	"log"
 	"os"
     "strings"
     "regexp"
     "bufio"
+    "flag"
+    "encoding/json"
 
+	_ "github.com/mattn/go-sqlite3"
     "github.com/fsnotify/fsnotify"
-	//"github.com/matrix-org/gomatrix"
     "maunium.net/go/mautrix"
+	"maunium.net/go/mautrix/crypto/cryptohelper"
     id "maunium.net/go/mautrix/id"
 
 )
 
 type StringSet map[string]struct{}
+type CredzNPathz struct {
+    MatrixHomeserver string
+    MatrixUser id.UserID
+    MatrixRoom id.RoomID
+    MatrixPassword string
+
+    WatchDir string
+    Filters []string
+    SQLiteDatabase string
+}
 // globalz lol
 var (
-	matrixUrl   string
-	matrixUser  id.UserID
-	matrixToken string
-	matrixRoom  id.RoomID
-
-    watchDir string
     matchTermsFile string
-
+    configFile string
     barkedSet StringSet
-
 	cli *mautrix.Client
 )
 
@@ -61,30 +70,19 @@ func isMemberOfSet( set StringSet, strIn string ) bool {
 }
 
 func parseEnv() {
-	matrixUrl = os.Getenv("MATRIX_LOGDOG_URL")
-	if matrixUrl == "" {
-		log.Fatal("MATRIX_LOGDOG_URL is required")
+	configFile = os.Getenv("MATRIX_LOGDOG_CONFIG_FILE")
+    if configFile == "" {
+		log.Fatal("MATRIX_LOGDOG_CONFIG_FILE")
 	}
-	matrixUser = id.UserID(os.Getenv("MATRIX_LOGDOG_USER"))
-	if matrixUser == "" {
-		log.Fatal("MATRIX_LOGDOG_USER is required")
-	}
-	matrixToken = os.Getenv("MATRIX_LOGDOG_TOKEN")
-	if matrixToken == "" {
-		log.Fatal("MATRIX_LOGDOG_TOKEN is required")
-	}
-	matrixRoom = id.RoomID(os.Getenv("MATRIX_LOGDOG_ROOM"))
-	if matrixRoom == "" {
-		log.Fatal("MATRIX_LOGDOG_ROOM is required")
-	}
-	watchDir = os.Getenv("MATRIX_LOGDOG_WATCH_DIR")
-    if watchDir == "" {
-		log.Fatal("MATRIX_LOGDOG_WATCH_DIR is required")
-	}
-	matchTermsFile = os.Getenv("MATRIX_LOGDOG_MATCH_FILE")
-    if matchTermsFile == "" {
-		log.Fatal("MATRIX_LOGDOG_MATCH_FILE is required")
-	}
+
+}
+
+func parseConfigJson ( jsonFilepath string) ( configOut CredzNPathz ) {
+    
+    content, err := os.ReadFile(jsonFilepath)
+    panicCheck(err)
+    err = json.Unmarshal(content, &configOut)
+    return
 }
 
 func parseTermsFile ( filepathIn string ) ( fileLines []string ) {
@@ -103,7 +101,7 @@ func parseTermsFile ( filepathIn string ) ( fileLines []string ) {
     return
 }
 
-func bark(text string) {
+func bark(text string, matrixRoom id.RoomID) {
 	_, err := cli.SendText(matrixRoom, text)
     printCheck(err)
 }
@@ -135,7 +133,7 @@ func watch( watchDir string, eventChan chan<- string) {
     }
 }
 
-func search( terms []string , byteOffsetForRead int64, event string, sizeChan chan<- int64 ) {
+func search( terms []string , byteOffsetForRead int64, event string, sizeChan chan<- int64, matrixRoom id.RoomID ) {
         file, err := os.Open( event )
         printCheck(err)
         if err != nil{
@@ -168,7 +166,7 @@ func search( terms []string , byteOffsetForRead int64, event string, sizeChan ch
                         if !isMemberOfSet(barkedSet, line) {
                             barkedSet[line] = struct{}{}
                             log.Println("barking: ", line )
-                            bark(line)
+                            bark(line, matrixRoom)
                         }
                     }
                 }
@@ -177,29 +175,66 @@ func search( terms []string , byteOffsetForRead int64, event string, sizeChan ch
 }
 
 func main() {
+
+    
 	parseEnv()
 	var err error
     var event string
-    terms := parseTermsFile( matchTermsFile )
+    configStruct := parseConfigJson( configFile )
+
+    matchTermsFile := flag.String("filterFile","","Optional newline-delimited list of filter terms.")
+    var terms []string
+    if *matchTermsFile != "" {
+        terms = parseTermsFile( *matchTermsFile )
+    } else {
+        terms = configStruct.Filters
+    }
     log.Println("terms: ", terms)
-	cli, err = mautrix.NewClient(matrixUrl, matrixUser, matrixToken)
+	cli, err = mautrix.NewClient(configStruct.MatrixHomeserver, "","")
     panicCheck(err)
-    barkedSet = StringSet{}
     
+    barkedSet = StringSet{}
+    userLocalPart := strings.Split(string(configStruct.MatrixUser), "@")[0]
+    
+	cryptoHelper, err := cryptohelper.NewCryptoHelper(cli, []byte("meow"), configStruct.SQLiteDatabase)
+	cryptoHelper.LoginAs = &mautrix.ReqLogin{
+		Type:       mautrix.AuthTypePassword,
+		Identifier: mautrix.UserIdentifier{Type: mautrix.IdentifierTypeUser, User: userLocalPart},
+		Password:   configStruct.MatrixPassword,
+	}
+    panicCheck(err)
+	err = cryptoHelper.Init()
+    panicCheck(err)
+    cli.Crypto = cryptoHelper
+
+	syncCtx, _ := context.WithCancel(context.Background())
+	var syncStopWait sync.WaitGroup
+	syncStopWait.Add(1)
+
+	go func() {
+		err = cli.SyncWithContext(syncCtx)
+		defer syncStopWait.Done()
+		if err != nil && !errors.Is(err, context.Canceled) {
+			panic(err)
+		}
+	}()
+
     eventChan :=  make(chan string)
     sizeChan :=  make(chan int64)
 	// lmao, bark bark
     currentFileSize := int64(0)
-    go watch( watchDir , eventChan )
+    go watch( configStruct.WatchDir , eventChan )
 	for {
 
             select {
             case event = <-eventChan:
                 log.Println("event triggered")
-                go search( terms, currentFileSize , event , sizeChan )
+                go search( terms, currentFileSize , event , sizeChan, configStruct.MatrixRoom )
             case currentFileSize = <-sizeChan:
                 log.Println("filesize change")
             }
 		}
+    err = cryptoHelper.Close()
+    logFCheck(err)
 }
 
