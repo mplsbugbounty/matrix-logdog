@@ -14,15 +14,22 @@ first, set up proper variables for MATRIX_LOGDOG:
 # use whatever user you want! can even be from different homeserver
 # token can be found in element at settings -> help -> advanced -> token
 # room IDs can be found under settings -> advanced -> internal room id
-export MATRIX_LOGDOG_URL="https://matrix.example.com"
-export MATRIX_LOGDOG_USER="@yourbot:example.com"
-export MATRIX_LOGDOG_TOKEN="yourbots-token"
-export MATRIX_LOGDOG_ROOM="!WAoLCYOOyceAxMaFYU:example.com"
-#this next one is the directory in which files are monitored for changes
-export MATRIX_LOGDOG_WATCH_DIR="/home/exampleuser/logz/"
-#this file is expected to be a newline-delimited set of strings to search for
-export MATRIX_LOGDOG_MATCH_FILE="/home/exampleuser/logrulez.txt"
+
+export MATRIX_LOGDOG_CONFIG_FILE="myconfig.json"
 ```
+Then, myconfig.json should look like:
+```
+{
+    "MatrixHomeserver": "https://matrix.example.com",
+    "MatrixUser": "user@example.com",
+    "MatrixRoom": "!WAoLCYOOyceAxMaFYU:example.com",
+    "MatrixPassword": "uSeRlOGinPassWurd1",
+    "WatchDir": "/home/exampleuser/logz/",
+    "Filters": [ "msg:","message:" ],
+    "SQLiteDatabase": "test.db"
+}
+```
+
 
 then, start the bot:
 
