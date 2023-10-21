@@ -12,9 +12,18 @@ specify a wordlist with the -filterFile flag so that each line will be a search 
 
 ## Installation
 
+First, you need to have Go installed. Installation instructions can be found here: https://go.dev/doc/install
+So far, the only tested version of Go is 1.21.3.
+
 libolm-dev is required, and right now it's a manual install process, sorry about that. You should be able to install it with:
 ```
 sudo apt install libolm-dev
+```
+
+With those dependencies met, you just clone the repo and enter it:
+```
+git clone https://github.com/mplsbugbounty/matrix-loggo-doggo.git
+cd matrix-loggo-doggo
 ```
 
 ## Usage
