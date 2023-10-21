@@ -1,16 +1,16 @@
 Based on https://git.cyberia.club/cyberia/jackal
 
-##Plattorm
+## Plattorm
 Linux!
 
-##Description
+## Description
 Watch a directory for filtered changes, receive notifications in Matrix!
 Any time a file is written within the selected directory, the new file data is checked against a provided list
 of terms. If a match is found, the matched line will be sent as a message to the provided matrix room. 
 You may either provide the filter terms as a list in the json configuration file, or
 specify a wordlist with the -filterFile flag so that each line will be a search term.
 
-##Installation
+## Installation
 
 libolm-dev is required, and right now it's a manual install process, sorry about that. You should be able to install it with:
 ```
