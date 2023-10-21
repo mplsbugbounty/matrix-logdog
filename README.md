@@ -2,26 +2,22 @@ Based on https://git.cyberia.club/cyberia/jackal
 
 Watch a directory for filtered changes, receive notifications in Matrix!
 Any time a file is written within the selected directory, the new file data is checked against a provided list
-of terms. If a match is found, the matched line will be sent as a message to thee provided matrix room. 
-
-Matrix encryption is not yet supported.
+of terms. If a match is found, the matched line will be sent as a message to the provided matrix room. 
+You may either provide the filter terms as a list in the json configuration file, or
+specify a wordlist with the -filterFile flag so that each line will be a search term.
 
 ## usage
 
-first, set up proper variables for MATRIX_LOGDOG:
 
-```
-# use whatever user you want! can even be from different homeserver
-# token can be found in element at settings -> help -> advanced -> token
-# room IDs can be found under settings -> advanced -> internal room id
+Use whatever user you want!
+Room IDs can be found under settings -> advanced -> internal room id.
 
-export MATRIX_LOGDOG_CONFIG_FILE="myconfig.json"
-```
-Then, myconfig.json should look like:
+First, you need to configure account info for your matrix bot account.
+Configuration is specified in matrix_logdog.json should look like:
 ```
 {
     "MatrixHomeserver": "https://matrix.example.com",
-    "MatrixUser": "user@example.com",
+    "MatrixUser": "username_localpart",
     "MatrixRoom": "!WAoLCYOOyceAxMaFYU:example.com",
     "MatrixPassword": "uSeRlOGinPassWurd1",
     "WatchDir": "/home/exampleuser/logz/",
@@ -30,9 +26,26 @@ Then, myconfig.json should look like:
 }
 ```
 
+You may optionally specifiy a different config file by setting this environment variable, MATRIX_LOGDOG_CONFIG in which case e.g. myconfig.json should look like the above. Use like this:
+```
+export MATRIX_LOGDOG_CONFIG_FILE="myconfig.json"
+```
+After you have set the values in your config file, it is recommended to create a new user for the matrix-logdog process, then change the owner of matrix_logdog.json to that user, then set permissions so that only that user can read the file.
+This is to prevent other users on the same machine from seeing your account info.
+After creating the user matrixLogdogUser, use:
+```
+chown matrixLogdogUser matrix_logdog.json
+chmod 400 matrix_logdog.json
+```
 
-then, start the bot:
+Once you have finished configuration, start the bot with:
 
 ```
 go run main.go
+```
+
+You may use a wordlist (a newline delimited text file in which each line is presumed 
+to be an entry) to specify filters, like:
+```
+go run main.go -filterFile path/to/file.txt
 ```

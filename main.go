@@ -11,6 +11,7 @@ import (
     "bufio"
     "flag"
     "encoding/json"
+    "crypto/sha256"
 
 	_ "github.com/mattn/go-sqlite3"
     "github.com/fsnotify/fsnotify"
@@ -21,6 +22,14 @@ import (
 )
 
 type StringSet map[string]struct{}
+type HashByFilepath map[string][32]byte
+
+type FilepathHashPair struct{
+    Filename string
+    Sha256Sum [32]byte
+}
+
+//for unmarshalling the config file
 type CredzNPathz struct {
     MatrixHomeserver string
     MatrixUser id.UserID
@@ -31,6 +40,7 @@ type CredzNPathz struct {
     Filters []string
     SQLiteDatabase string
 }
+
 // globalz lol
 var (
     matchTermsFile string
@@ -60,6 +70,14 @@ func panicCheck(e error){
     }
 }
 
+func cloneHashByFile( mapIn HashByFilepath ) ( mapOut HashByFilepath ) {
+    mapOut = make(HashByFilepath)
+    for k, v := range mapIn {
+            mapOut[k] = v
+        }
+        return
+}
+
 func isMemberOfSet( set StringSet, strIn string ) bool {
     for item,_ := range set{
         if strIn == item {
@@ -72,13 +90,11 @@ func isMemberOfSet( set StringSet, strIn string ) bool {
 func parseEnv() {
 	configFile = os.Getenv("MATRIX_LOGDOG_CONFIG_FILE")
     if configFile == "" {
-		log.Fatal("MATRIX_LOGDOG_CONFIG_FILE")
+        configFile = "matrix_logdog.json"
 	}
-
 }
 
 func parseConfigJson ( jsonFilepath string) ( configOut CredzNPathz ) {
-    
     content, err := os.ReadFile(jsonFilepath)
     panicCheck(err)
     err = json.Unmarshal(content, &configOut)
@@ -133,50 +149,54 @@ func watch( watchDir string, eventChan chan<- string) {
     }
 }
 
-func search( terms []string , byteOffsetForRead int64, event string, sizeChan chan<- int64, matrixRoom id.RoomID ) {
-        file, err := os.Open( event )
-        printCheck(err)
-        if err != nil{
-            return
+func barkIfFound( term string , line string, matrixRoom id.RoomID ) {
+
+    found , _ := regexp.MatchString(term, line)
+    if found {
+        if !isMemberOfSet(barkedSet, line) {
+            barkedSet[line] = struct{}{}
+            log.Println("barking: ", line )
+            bark(line, matrixRoom)
         }
-        defer file.Close()
-        fileinfo, err := file.Stat()
-        if err != nil{
-            return
-        }
-        printCheck(err)
-        fileSize := fileinfo.Size()
-        sizeChan <-fileSize
-        bufferSize := fileSize - byteOffsetForRead
-        //fully reload the file if its length is less than last offset
-        if bufferSize < 0 {
-            bufferSize = fileSize
-            byteOffsetForRead = 0
-        }
-        buffer := make([]byte, bufferSize)
-        bytesRead , err := file.ReadAt(buffer, byteOffsetForRead)
-        printCheck(err)
-        if err == nil{
-            log.Println("bytesRead:", bytesRead)
-            newText := strings.Split(string(buffer), "\n")
-            for _, line := range newText {
-                for _, term := range terms {
-                    found , _ := regexp.MatchString(term, line)
-                    if found {
-                        if !isMemberOfSet(barkedSet, line) {
-                            barkedSet[line] = struct{}{}
-                            log.Println("barking: ", line )
-                            bark(line, matrixRoom)
-                        }
-                    }
-                }
+    }
+}
+
+func checkLinesAgainstTermsBarkIfFound( fileContent []byte, terms []string, matrixRoom id.RoomID  ) {
+
+        newText := strings.Split(string(fileContent), "\n")
+        for _, line := range newText {
+            for _, term := range terms {
+                barkIfFound(term , line , matrixRoom )
             }
+        }
+}
+
+func search( terms []string , currentFileHashes HashByFilepath, event string, hashChan chan<- FilepathHashPair , matrixRoom id.RoomID ) {
+
+        file, err := os.ReadFile( event )
+        printCheck(err)
+        if err != nil{
+            return
+        }
+
+        var fileHashPair FilepathHashPair
+        fileHashPair.Filename = event
+        fileHashPair.Sha256Sum = sha256.Sum256( file )
+        if storedFileHash, notFirstHashing := currentFileHashes[ event ]; notFirstHashing {
+            if fileHashPair.Sha256Sum != storedFileHash {
+                hashChan <- fileHashPair
+                checkLinesAgainstTermsBarkIfFound( file, terms , matrixRoom )
+            } else {
+                return
+            }
+        } else /*if firstHashing*/ {
+            hashChan <- fileHashPair
+            checkLinesAgainstTermsBarkIfFound( file, terms, matrixRoom )
         }
 }
 
 func main() {
 
-    
 	parseEnv()
 	var err error
     var event string
@@ -194,7 +214,7 @@ func main() {
     panicCheck(err)
     
     barkedSet = StringSet{}
-    userLocalPart := strings.Split(string(configStruct.MatrixUser), "@")[0]
+    userLocalPart := string(configStruct.MatrixUser)
     
 	cryptoHelper, err := cryptohelper.NewCryptoHelper(cli, []byte("meow"), configStruct.SQLiteDatabase)
 	cryptoHelper.LoginAs = &mautrix.ReqLogin{
@@ -220,18 +240,20 @@ func main() {
 	}()
 
     eventChan :=  make(chan string)
-    sizeChan :=  make(chan int64)
+    hashChan :=  make(chan FilepathHashPair )
 	// lmao, bark bark
-    currentFileSize := int64(0)
+    currentFileHashes := make(HashByFilepath) 
     go watch( configStruct.WatchDir , eventChan )
 	for {
 
             select {
             case event = <-eventChan:
                 log.Println("event triggered")
-                go search( terms, currentFileSize , event , sizeChan, configStruct.MatrixRoom )
-            case currentFileSize = <-sizeChan:
-                log.Println("filesize change")
+                currentHashesCopy := cloneHashByFile(currentFileHashes)
+                go search( terms, currentHashesCopy , event , hashChan, configStruct.MatrixRoom )
+            case newHash := <-hashChan:
+                currentFileHashes[newHash.Filename] = newHash.Sha256Sum
+                log.Println("Change detected in ", newHash.Filename)
             }
 		}
     err = cryptoHelper.Close()

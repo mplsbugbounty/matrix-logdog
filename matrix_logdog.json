@@ -1,0 +1,9 @@
+{
+    "MatrixHomeserver": "https://matrix.example.com",
+    "MatrixUser": "username_localpart",
+    "MatrixRoom": "!WAoLCYOOyceAxMaFYU:example.com",
+    "MatrixPassword": "uSeRlOGinPassWurd1",
+    "WatchDir": "/home/exampleuser/logz/",
+    "Filters": [ "msg:","message:" ],
+    "SQLiteDatabase": "test.db"
+}
